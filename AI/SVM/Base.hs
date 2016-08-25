@@ -192,6 +192,18 @@ predict (getModelPtr -> fptr)
                            realToFrac <$> V.unsafeWith nodes 
                                              (c'svm_predict modelPtr)
 
+--{-#SPECIALIZE predict :: SVM -> SVMNodes -> IO Double #-}
+predictWithProbabilities :: (SVMVector a) => SVM -> a -> [a] -> IO [Double]
+predictWithProbabilities (getModelPtr -> fptr) 
+        (convert -> nodes)  (dataSet) = do
+                result_ptr :: Ptr CDouble <- mallocArray (length dataSet)
+                unsafePerformIO (withForeignPtr fptr ( \modelPtr -> 
+                    realToFrac <$> V.unsafeWith nodes 
+                        (\x -> c'svm_predict_probability modelPtr x result_ptr)))
+                res <- peekArray (length dataSet) result_ptr
+                return (map realToFrac res)
+
+
 defaultParameters = C'svm_parameter {
       c'svm_parameter'svm_type = c'C_SVC
     , c'svm_parameter'kernel_type = c'LINEAR
